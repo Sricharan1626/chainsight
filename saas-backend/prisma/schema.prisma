@@ -1,0 +1,104 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SuperAdmin
+  Admin
+  Manager
+  Employee
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model PendingRequest {
+  id             String        @id @default(uuid())
+  companyName    String
+  industry       String
+  monthlyBatches Int
+  contactEmail   String
+  status         RequestStatus @default(PENDING)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  stages    String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users      User[]
+  orders     Order[]
+  batches    Batch[]
+  riskEvents RiskEvent[]
+}
+
+model User {
+  id          String   @id @default(uuid())
+  firebaseUid String   @unique
+  email       String   @unique
+  role        Role     @default(Employee)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+}
+
+model Order {
+  id                      String   @id @default(uuid())
+  description             String
+  quantity                Int      @default(1)
+  expectedIntervalMinutes Int      @default(120)
+  status                  String   @default("Active")
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+  batches   Batch[]
+}
+
+model Batch {
+  id            String   @id @default(uuid())
+  batchNumber   String
+  currentStage  String   @default("")
+  status        String   @default("pending")
+  algorandTxId  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id])
+
+  riskEvents RiskEvent[]
+}
+
+model RiskEvent {
+  id              String   @id @default(uuid())
+  riskType        String
+  confidenceScore Float
+  stage           String
+  algorandTxId    String?
+  createdAt       DateTime @default(now())
+
+  batchId   String
+  batch     Batch   @relation(fields: [batchId], references: [id])
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+}
